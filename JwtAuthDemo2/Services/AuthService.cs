@@ -1,14 +1,14 @@
 ﻿using JwtAuthDemo2.Data;
 using JwtAuthDemo2.Helpers;
 using JwtAuthDemo2.Models;
-using JwtAuthDemo2.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
-namespace JwtAuthDemo2
+namespace JwtAuthDemo2.Services
 {
     public class AuthService : IAuthService
     {
+        
         private readonly ApplicationDbContext _context;
         private readonly JwtHelper _jwtHelper;
         private readonly IConfiguration _configuration;
@@ -44,7 +44,7 @@ namespace JwtAuthDemo2
         public async Task<(string accessToken, string refreshToken)> LoginAsync(string username, string password)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
-            if(user == null)
+            if (user == null)
             {
                 throw new Exception("Invalid credentials");
             }
@@ -57,7 +57,7 @@ namespace JwtAuthDemo2
             var refreshToken = _jwtHelper.GenerateRefreshToken();
 
 
-            user.RefreshToken = accessToken;
+            user.RefreshToken = refreshToken;
             user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"]!));
 
             return (accessToken, refreshToken);
@@ -70,7 +70,7 @@ namespace JwtAuthDemo2
 
 
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
-            if(user == null || user.RefreshToken != refreshToken || user.RefreshTokenExpiryTime <DateTime.UtcNow)
+            if (user == null || user.RefreshToken != refreshToken || user.RefreshTokenExpiryTime < DateTime.UtcNow)
             {
                 throw new Exception("Invalid refresh token");
             }
@@ -80,8 +80,10 @@ namespace JwtAuthDemo2
             var newRefreshToken = _jwtHelper.GenerateRefreshToken();
 
 
-            user.RefreshToken = newAccessToken;
+            user.RefreshToken = newRefreshToken;
             user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(int.Parse((_configuration["Jwt:RefreshTokenExpirationDays"]!)));
+
+            await _context.SaveChangesAsync();
 
             return (newAccessToken, newRefreshToken);
         }
